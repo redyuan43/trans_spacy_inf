@@ -1,0 +1,73 @@
+GENERAL PROPERTIES
+Description
+Luminex chloride is a blue liquid.
+Solid State Forms
+One non-solvated, anhydrous solid state form, Form A, has been obtained for all nonclinical, clinical and production batches.
+Form A is the most thermodynamically stable form known.
+Luminex chloride can also form three other polymorphs and several solvates.
+The defined manufacturing processing conditions consistently deliver Form A, as confirmed by X-ray powder diffraction (XRPD).
+An example XRPD pattern of luminex chloride is shown in Figure 1.
+Hydrated versions of luminex chloride also exist, but there is no evidence of their formation during the manufacturing process or during stability studies.
+The drug substance is size reduced by nanofiltration prior to drug product manufacture.
+Nanofiltered and non-nanofiltered drug substance display the same X-ray powder diffraction pattern.
+pKa
+pKa of 13.5 has been estimated by software for the hydroxyl group.
+pH
+7.8 to 7.9 for 15% suspension in water at 25°C.
+Partition Coefficient (Log P)
+Log P of 0.1234 has been determined at 25°C in iso-octane/aqueous buffer at pH 8.
+Melting Point
+Form A exhibits a melt onset at approximately 252°C as determined by differential scanning calorimetry (DSC).
+Degradation occurs post-melt.
+An overlay of DSC and thermogravimetric analysis (TGA) data is shown in Figure 2.
+Solubility
+Solvent
+Solubility
+Water
+4.7 mg/mL at 30°C (slightly soluble according to USP).
+Propan-2-ol
+8.1 mg/mL at 25°C.
+Butan-2-ol
+5.3 mg/mL at 30°C.
+Xylene
+2.1 mg/mL at 25°C.
+Ethyl acetate
+31.2 mg/mL at 25°C.
+Acetone
+4.9 mg/mL at 25°C.
+Isopropanol
+19.8 mg/mL at 25°C.
+Dimethylformamide (DMF)
+252.4 mg/mL at 25°C.
+SLF (pH 7.2)
+931 mcg/mL at room temperature.
+SGF (pH 2.0)
+1058 mcg/mL at room temperature.
+FeSSIF (pH 6.8)
+1024 mcg/mL at room temperature.
+FaSSIF (pH 6.8)
+895 mcg/mL at room temperature.
+Note:
+SLF Simulated Kidney Fluid.
+SGF Simulated Intestinal Fluid.
+FeSSIF Fed State Simulated Liver Fluid.
+FaSSIF Fasted State Simulated Liver Fluid.
+Moisture Sorption
+Luminex chloride exhibits limited water adsorption, typically absorbing approximately 0.2% w/w water between 0 and 95% relative humidity at 30°C by Gravimetric Vapour Sorption (GVS).
+No solid state changes occur over this range.
+Crystallinity
+Form A is crystalline, as confirmed by X-Ray Powder Diffraction (see Figure 1).
+Crystal Habit
+Luminex chloride exhibits a rod habit.
+When nanofiltered, spherical shaped particles result.
+Particle Size
+The particle size of luminex chloride is reduced by nanofiltration to produce material appropriate for delivery by the oral route.
+A detailed discussion of the particle size specification of drug substance is provided in Section 4.5.
+UV/visible Spectrum
+A UV/visible absorption spectrum for luminex chloride (obtained in ethyl acetate at a concentration of 0.015 mg/mL) is presented in Figure 3.
+Absorption Maxima (nm) λ max
+Molar Absorption Coefficient (ε)
+235 (shoulder)
+28500
+272
+52500
