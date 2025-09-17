@@ -9,32 +9,40 @@ import json
 import argparse
 from typing import List, Dict, Any
 import logging
+from sentence_eos_processor import SentenceEOSProcessor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class TransformersInference:
     """Transformers模型推理"""
-    
-    def __init__(self, model_path):
+
+    def __init__(self, model_path, enable_eos=True):
         from transformers import AutoTokenizer, AutoModelForTokenClassification
-        
+
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logger.info(f"使用设备: {self.device}")
-        
+
         self.tokenizer = AutoTokenizer.from_pretrained(model_path)
         self.model = AutoModelForTokenClassification.from_pretrained(model_path)
         self.model.to(self.device)
         self.model.eval()
-        
+
         # 标签映射
         self.id2label = {
             0: 'O', 1: 'B-TECH', 2: 'I-TECH',
             3: 'B-NUM', 4: 'I-NUM',
             5: 'B-UNIT', 6: 'I-UNIT'
         }
-        
+
+        # EOS处理器
+        self.enable_eos = enable_eos
+        if enable_eos:
+            self.eos_processor = SentenceEOSProcessor()
+
         logger.info(f"Transformers模型加载完成: {model_path}")
+        if enable_eos:
+            logger.info("已启用句子结束符号(EOS)识别")
     
     def predict_text(self, text: str) -> Dict[str, Any]:
         """对单个文本进行预测"""
@@ -65,75 +73,100 @@ class TransformersInference:
         
         # 提取实体
         entities = self._extract_entities(result_tokens, result_labels)
-        
-        return {
+
+        result = {
             'text': text,
             'tokens': result_tokens,
             'labels': result_labels,
             'entities': entities
         }
+
+        # 添加EOS后处理
+        if self.enable_eos:
+            result = self.eos_processor.process_prediction_result(text, result)
+
+        return result
     
-    def _extract_entities(self, tokens: List[str], labels: List[str]) -> List[Dict[str, str]]:
-        """从预测结果中提取实体"""
+    def _extract_entities(self, tokens: List[str], labels: List[str]) -> List[tuple]:
+        """从预测结果中提取实体，返回(start, end, label)格式"""
         entities = []
-        current_entity = []
+        current_entity_start = None
+        current_entity_tokens = []
         current_type = None
-        
-        for token, label in zip(tokens, labels):
+        char_pos = 0
+
+        # 重建文本以计算字符位置
+        text_parts = []
+        char_positions = []
+
+        for token in tokens:
+            char_positions.append(char_pos)
+            text_parts.append(token)
+            char_pos += len(token)
+
+        for i, (token, label) in enumerate(zip(tokens, labels)):
             if label.startswith('B-'):
                 # 开始新实体
-                if current_entity:
-                    entities.append({
-                        'text': ''.join(current_entity),
-                        'type': current_type
-                    })
-                current_entity = [token]
+                if current_entity_start is not None:
+                    # 结束前一个实体
+                    entity_text = ''.join(current_entity_tokens)
+                    end_pos = char_positions[i-1] + len(tokens[i-1])
+                    entities.append((current_entity_start, end_pos, current_type))
+
+                current_entity_start = char_positions[i]
+                current_entity_tokens = [token]
                 current_type = label[2:]
             elif label.startswith('I-') and current_type:
                 # 继续当前实体
                 if label[2:] == current_type:
-                    current_entity.append(token)
+                    current_entity_tokens.append(token)
                 else:
                     # 类型不匹配，结束当前实体
-                    if current_entity:
-                        entities.append({
-                            'text': ''.join(current_entity),
-                            'type': current_type
-                        })
-                    current_entity = []
+                    if current_entity_start is not None:
+                        entity_text = ''.join(current_entity_tokens)
+                        end_pos = char_positions[i-1] + len(tokens[i-1])
+                        entities.append((current_entity_start, end_pos, current_type))
+                    current_entity_start = None
+                    current_entity_tokens = []
                     current_type = None
             else:
                 # O标签，结束当前实体
-                if current_entity:
-                    entities.append({
-                        'text': ''.join(current_entity),
-                        'type': current_type
-                    })
-                current_entity = []
+                if current_entity_start is not None:
+                    entity_text = ''.join(current_entity_tokens)
+                    end_pos = char_positions[i-1] + len(tokens[i-1])
+                    entities.append((current_entity_start, end_pos, current_type))
+                current_entity_start = None
+                current_entity_tokens = []
                 current_type = None
-        
+
         # 处理最后一个实体
-        if current_entity:
-            entities.append({
-                'text': ''.join(current_entity),
-                'type': current_type
-            })
-        
+        if current_entity_start is not None:
+            end_pos = char_positions[-1] + len(tokens[-1])
+            entities.append((current_entity_start, end_pos, current_type))
+
         return entities
 
 class SpacyInference:
     """spaCy模型推理"""
-    
-    def __init__(self, model_path):
+
+    def __init__(self, model_path, enable_eos=True):
         import spacy
-        
+
         self.nlp = spacy.load(model_path)
+
+        # EOS处理器
+        self.enable_eos = enable_eos
+        if enable_eos:
+            self.eos_processor = SentenceEOSProcessor()
+
         logger.info(f"spaCy模型加载完成: {model_path}")
+        if enable_eos:
+            logger.info("已启用句子结束符号(EOS)识别")
     
     def predict_text(self, text: str) -> Dict[str, Any]:
         """对单个文本进行预测"""
         doc = self.nlp(text)
-        
+
         # 获取tokens和标签
         tokens = [token.text for token in doc]
         labels = []
@@ -142,21 +175,24 @@ class SpacyInference:
                 labels.append(f"{token.ent_iob_}-{token.ent_type_}")
             else:
                 labels.append('O')
-        
-        # 提取实体
+
+        # 提取实体，返回(start, end, label)格式
         entities = []
         for ent in doc.ents:
-            entities.append({
-                'text': ent.text,
-                'type': ent.label_
-            })
-        
-        return {
+            entities.append((ent.start_char, ent.end_char, ent.label_))
+
+        result = {
             'text': text,
             'tokens': tokens,
             'labels': labels,
             'entities': entities
         }
+
+        # 添加EOS后处理
+        if self.enable_eos:
+            result = self.eos_processor.process_prediction_result(text, result)
+
+        return result
 
 def load_test_data(file_path: str) -> List[str]:
     """加载测试数据"""
@@ -175,9 +211,9 @@ def run_inference(framework: str, model_path: str, test_files: List[str]):
     
     # 初始化模型
     if framework == "transformers":
-        model = TransformersInference(model_path)
+        model = TransformersInference(model_path, enable_eos=True)
     elif framework == "spacy":
-        model = SpacyInference(model_path)
+        model = SpacyInference(model_path, enable_eos=True)
     else:
         raise ValueError(f"不支持的框架: {framework}")
     
@@ -212,7 +248,14 @@ def run_inference(framework: str, model_path: str, test_files: List[str]):
                 if result['entities']:
                     print("🎯 识别的实体:")
                     for entity in result['entities']:
-                        print(f"   • {entity['text']} ({entity['type']})")
+                        if isinstance(entity, tuple):
+                            # (start, end, label) 格式
+                            start, end, label = entity
+                            entity_text = text[start:end]
+                            print(f"   • {entity_text} ({label}) [{start}:{end}]")
+                        else:
+                            # 兼容旧格式
+                            print(f"   • {entity.get('text', 'N/A')} ({entity.get('type', 'N/A')})")
                 else:
                     print("   无实体识别")
                     
@@ -234,7 +277,12 @@ def run_inference(framework: str, model_path: str, test_files: List[str]):
         entity_types = {}
         for result in results:
             for entity in result['entities']:
-                entity_type = entity['type']
+                if isinstance(entity, tuple):
+                    # (start, end, label) 格式
+                    entity_type = entity[2]
+                else:
+                    # 兼容旧格式
+                    entity_type = entity.get('type', 'UNKNOWN')
                 entity_types[entity_type] = entity_types.get(entity_type, 0) + 1
         
         print(f"\n📊 统计结果:")

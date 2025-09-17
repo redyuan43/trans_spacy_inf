@@ -209,7 +209,7 @@ def prepare_training_data(data_path):
     
     return training_data
 
-def train_spacy_transformers(data_path="training_data/final_dataset_augmented.json", 
+def train_spacy_transformers(data_path="training_data/final_dataset.json", 
                             output_path="./trained_models/spacy_transformers",
                             epochs=10):
     """训练spacy-transformers模型"""
@@ -348,7 +348,7 @@ def main():
     parser = argparse.ArgumentParser(description='SpaCy-Transformers NER训练')
     parser.add_argument('--action', choices=['train', 'test', 'both'], 
                        default='train', help='执行的操作')
-    parser.add_argument('--data', default='training_data/final_dataset_augmented.json',
+    parser.add_argument('--data', default='training_data/final_dataset.json',
                        help='训练数据路径')
     parser.add_argument('--epochs', type=int, default=10,
                        help='训练轮数')

@@ -8,36 +8,40 @@ import spacy
 import json
 from pathlib import Path
 import time
+from sentence_eos_processor import SentenceEOSProcessor
 
 class SpacyTransformersInference:
-    def __init__(self, model_path="./trained_models/spacy_transformers"):
+    def __init__(self, model_path="./trained_models/spacy_transformers", enable_eos=True):
         """初始化spacy-transformers推理器"""
         print(f"加载SpaCy-Transformers模型: {model_path}")
         self.nlp = spacy.load(model_path)
+
+        # EOS处理器
+        self.enable_eos = enable_eos
+        if enable_eos:
+            self.eos_processor = SentenceEOSProcessor()
+
         print(f"✓ 模型加载完成")
         print(f"  Pipeline组件: {self.nlp.pipe_names}")
         print(f"  支持的实体类型: {self.nlp.get_pipe('ner').labels}")
+        if enable_eos:
+            print("  已启用句子结束符号(EOS)识别")
     
     def predict(self, text):
         """对单个文本进行预测"""
         doc = self.nlp(text)
-        
+
         result = {
             'text': text,
             'entities': [],
             'tokens': [token.text for token in doc],
             'labels': []
         }
-        
-        # 提取实体
+
+        # 提取实体，返回(start, end, label)格式
         for ent in doc.ents:
-            result['entities'].append({
-                'text': ent.text,
-                'label': ent.label_,
-                'start': ent.start_char,
-                'end': ent.end_char
-            })
-        
+            result['entities'].append((ent.start_char, ent.end_char, ent.label_))
+
         # 生成BIO标签
         labels = ['O'] * len(doc)
         for ent in doc.ents:
@@ -45,33 +49,37 @@ class SpacyTransformersInference:
             for i in range(ent.start + 1, ent.end):
                 labels[i] = f'I-{ent.label_}'
         result['labels'] = labels
-        
+
+        # 添加EOS后处理
+        if self.enable_eos:
+            result = self.eos_processor.process_prediction_result(text, result)
+
         return result
     
     def predict_batch(self, texts, batch_size=32):
         """批量预测"""
         results = []
-        
+
         # 使用nlp.pipe进行批量处理（更高效）
         docs = list(self.nlp.pipe(texts, batch_size=batch_size))
-        
+
         for text, doc in zip(texts, docs):
             result = {
                 'text': text,
                 'entities': [],
                 'tokens': [token.text for token in doc]
             }
-            
+
+            # 提取实体，返回(start, end, label)格式
             for ent in doc.ents:
-                result['entities'].append({
-                    'text': ent.text,
-                    'label': ent.label_,
-                    'start': ent.start_char,
-                    'end': ent.end_char
-                })
-            
+                result['entities'].append((ent.start_char, ent.end_char, ent.label_))
+
+            # 添加EOS后处理
+            if self.enable_eos:
+                result = self.eos_processor.process_prediction_result(text, result)
+
             results.append(result)
-        
+
         return results
     
     def analyze_performance(self, texts):
@@ -134,7 +142,14 @@ def demo():
         if result['entities']:
             print("识别的实体:")
             for ent in result['entities']:
-                print(f"  - {ent['text']:<10} ({ent['label']}) [{ent['start']}:{ent['end']}]")
+                if isinstance(ent, tuple):
+                    # (start, end, label) 格式
+                    start, end, label = ent
+                    entity_text = text[start:end]
+                    print(f"  - {entity_text:<10} ({label}) [{start}:{end}]")
+                else:
+                    # 兼容旧格式
+                    print(f"  - {ent.get('text', 'N/A'):<10} ({ent.get('label', 'N/A')}) [{ent.get('start', 'N/A')}:{ent.get('end', 'N/A')}]")
         else:
             print("  未识别到实体")
         
@@ -157,7 +172,12 @@ def demo():
     entity_stats = {}
     for result in batch_results:
         for ent in result['entities']:
-            label = ent['label']
+            if isinstance(ent, tuple):
+                # (start, end, label) 格式
+                label = ent[2]
+            else:
+                # 兼容旧格式
+                label = ent.get('label', 'UNKNOWN')
             entity_stats[label] = entity_stats.get(label, 0) + 1
     
     print("\n实体统计:")
@@ -205,7 +225,14 @@ def interactive_mode():
         if result['entities']:
             print("\n识别的实体:")
             for ent in result['entities']:
-                print(f"  {ent['text']:<15} {ent['label']:<10} [{ent['start']}:{ent['end']}]")
+                if isinstance(ent, tuple):
+                    # (start, end, label) 格式
+                    start, end, label = ent
+                    entity_text = text[start:end]
+                    print(f"  {entity_text:<15} {label:<10} [{start}:{end}]")
+                else:
+                    # 兼容旧格式
+                    print(f"  {ent.get('text', 'N/A'):<15} {ent.get('label', 'N/A'):<10} [{ent.get('start', 'N/A')}:{ent.get('end', 'N/A')}]")
         else:
             print("未识别到实体")
 
